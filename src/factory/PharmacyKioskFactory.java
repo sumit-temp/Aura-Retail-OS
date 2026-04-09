@@ -1,0 +1,39 @@
+package factory;
+
+import factory.components.*;
+
+public class PharmacyKioskFactory implements KioskFactory {
+    @Override
+    public Dispenser createDispenser() {
+        return new SecureMedicationDispenser();
+    }
+
+    @Override
+    public VerificationModule createVerificationModule() {
+        return new PrescriptionVerificationModule();
+    }
+
+    @Override
+    public InventoryPolicy createInventoryPolicy() {
+        return new StrictMedicalInventoryPolicy();
+    }
+
+    static class SecureMedicationDispenser implements Dispenser {
+        public void dispenseProduct(String productId) {
+            System.out.println("[Pharmacy] Dispensing prescription securely: " + productId);
+        }
+    }
+
+    static class PrescriptionVerificationModule implements VerificationModule {
+        public boolean verify(String userId, String productId) {
+            System.out.println("[Pharmacy] Verifying prescription for User " + userId);
+            return true;
+        }
+    }
+
+    static class StrictMedicalInventoryPolicy implements InventoryPolicy {
+        public boolean canPurchase(String productId, int amount, int stock) {
+            return stock >= amount;
+        }
+    }
+}

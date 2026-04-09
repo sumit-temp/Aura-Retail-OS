@@ -1,0 +1,19 @@
+# Compiled class files
+*.class
+
+# Compiled output directories
+/out/
+target/
+
+# IDE specific files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Project specific built files
+sources.txt
+
+# Log files
+*.log

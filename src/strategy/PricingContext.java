@@ -14,4 +14,8 @@ public class PricingContext {
     public double executePricing(double basePrice) {
         return strategy.calculateFinalPrice(basePrice);
     }
+
+    public String getCurrentStrategy() {
+        return strategy.getClass().getSimpleName();
+    }
 }

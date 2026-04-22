@@ -2,13 +2,16 @@ package core;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class CentralRegistry {
     private static CentralRegistry instance;
     private Map<String, Object> configuration;
+    private final ReentrantLock lock;
     
     private CentralRegistry() {
         configuration = new HashMap<>();
+        this.lock = new ReentrantLock();
     }
     
     public static synchronized CentralRegistry getInstance() {
@@ -19,14 +22,29 @@ public class CentralRegistry {
     }
     
     public void setConfig(String key, Object value) {
-        configuration.put(key, value);
+        lock.lock();
+        try {
+            configuration.put(key, value);
+        } finally {
+            lock.unlock();
+        }
     }
     
     public Object getConfig(String key) {
-        return configuration.get(key);
+        lock.lock();
+        try {
+            return configuration.get(key);
+        } finally {
+            lock.unlock();
+        }
     }
     
     public boolean hasConfig(String key) {
-        return configuration.containsKey(key);
+        lock.lock();
+        try {
+            return configuration.containsKey(key);
+        } finally {
+            lock.unlock();
+        }
     }
 }

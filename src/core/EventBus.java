@@ -5,13 +5,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class EventBus {
     private static EventBus instance;
     private Map<String, List<EventListener>> listeners;
+    private final ReentrantLock lock;
 
     private EventBus() {
         listeners = new HashMap<>();
+        this.lock = new ReentrantLock();
     }
 
     public static synchronized EventBus getInstance() {
@@ -22,14 +25,29 @@ public class EventBus {
     }
 
     public void subscribe(String eventType, EventListener listener) {
-        listeners.computeIfAbsent(eventType, k -> new ArrayList<>()).add(listener);
+        lock.lock();
+        try {
+            listeners.computeIfAbsent(eventType, k -> new ArrayList<>()).add(listener);
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void publish(SystemEvent event) {
         System.out.println("[EventBus] Publishing event: " + event.getEventType());
-        List<EventListener> eventListeners = listeners.getOrDefault(event.getEventType(), new ArrayList<>());
-        for (EventListener listener : eventListeners) {
-            listener.onEvent(event);
+        lock.lock();
+        try {
+            List<EventListener> eventListeners = new ArrayList<>(
+                listeners.getOrDefault(event.getEventType(), new ArrayList<>())
+            );
+            // Release lock before invoking listeners to avoid deadlock
+            lock.unlock();
+            for (EventListener listener : eventListeners) {
+                listener.onEvent(event);
+            }
+            lock.lock();
+        } finally {
+            lock.unlock();
         }
     }
 }

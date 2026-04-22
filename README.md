@@ -35,20 +35,68 @@ The platform leverages pure object-oriented principles and 9 professional design
 9. **Facade Pattern**  
    Wraps all sprawling modules behind `KioskInterface`, providing external clients a seamless unified interface for restocking and purchasing items cleanly.
 
-## How to Run
+## Run Steps
 
-Compile and execute the core `Main.java` orchestrator to see the entire simulation in action.
+Compile and execute the core `Main.java` orchestrator to run the full end-to-end simulation.
 
-### Using Command Prompt (Windows)
+### Prerequisites
+- Java JDK 8 or higher installed and available on `PATH`
+
+### Build + Run (Command Prompt / Windows)
+Run from the project root:
+
 ```cmd
-cd src
-dir /s /b *.java > sources.txt
-javac -d ../out @sources.txt
-java -cp ../out Main
+if exist out rmdir /s /q out
+mkdir out
+dir /s /b src\*.java > sources.txt
+javac -d out @sources.txt
+java -cp out Main
 ```
 
-### Simulation Environment Output
-Running `Main.java` natively triggers an automated logging demonstration across robust state tests:
-* **Hardware Failures**: Forces simulated Dispenser Motor failures triggering atomic inventory rollbacks (Memento) and firing failure logs through City Monitoring chains logically.
-* **City-wide Emergency Deployments**: Triggers `EmergencyModeActivated` events scaling operations into strict `EmergencyLockdownMode`, halting excessive purchase queries natively, and triggering 50% discount overrides safely without monolithic adjustments.
-* **Concurrency Integrity**: Spawns overlapping execution contexts forcing atomic execution behavior cleanly processing requests efficiently.
+### Build + Run (PowerShell / Windows)
+Run from the project root:
+
+```powershell
+if (Test-Path out) { Remove-Item out -Recurse -Force }
+New-Item -ItemType Directory out | Out-Null
+Get-ChildItem -Recurse -Filter *.java src | Select-Object -ExpandProperty FullName | Set-Content sources.txt
+javac -d out @sources.txt
+java -cp out Main
+```
+
+## Simulation Demonstration
+
+Running `Main` executes a structured demonstration of all major requirements and patterns:
+
+1. **System Bootstrap**  
+   Initializes `CentralRegistry` (Singleton), loads configuration, and sets up the `EventBus` observer channels.
+
+2. **Pharmacy Kiosk Flow**  
+   Restocks medicine, runs a normal purchase, then forces a hardware-failure purchase to prove transaction rollback using Memento.
+
+3. **Failure Recovery Pipeline**  
+   Publishes a `HardwareFailureEvent` and passes it through `RetryHandler -> RecalibrationHandler -> TechnicianAlertHandler` (Chain of Responsibility).
+
+4. **Food Kiosk Flow**  
+   Applies `DiscountedPricing`, executes a discounted purchase, and emits a `LowStockEvent` to trigger supply-chain alerts.
+
+5. **Emergency Relief Flow**  
+   Broadcasts `EmergencyModeActivated`, switches to `EmergencyLockdownMode`, swaps pricing to `EmergencyPricing`, and enforces rationing rules.
+
+6. **State Coverage Test**  
+   Demonstrates state transitions (`ActiveMode`, `PowerSavingMode`, `MaintenanceMode`) and behavior changes per state.
+
+7. **Refund Processing**  
+   Runs a refund transaction and verifies inventory correction.
+
+8. **Concurrency Integrity Test**  
+   Starts two simultaneous purchase threads and verifies final stock consistency (`expected = 30`) to demonstrate atomic operations.
+
+9. **Persistence Summary**  
+   Saves configuration and prints transaction summaries via the persistence layer.
+
+If successful, the run ends with:
+
+```text
+=== Simulation Complete ===
+```

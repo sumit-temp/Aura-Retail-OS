@@ -20,4 +20,8 @@ public class KioskContext {
     public void maintain() {
         currentState.handleMaintenance(this);
     }
+
+    public String getCurrentStateInfo() {
+        return currentState.getClass().getSimpleName();
+    }
 }

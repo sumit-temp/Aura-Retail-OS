@@ -17,3 +17,5 @@ sources.txt
 
 # Log files
 *.log
+
+data/

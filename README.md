@@ -39,6 +39,13 @@ The platform leverages pure object-oriented principles and 9 professional design
 
 Compile and execute the core `Main.java` orchestrator to run the full end-to-end simulation.
 
+### Clone Repository
+
+```bash
+git clone https://github.com/Jeet0105/Aura-Retail-OS.git
+cd Aura-Retail-OS
+```
+
 ### Prerequisites
 - Java JDK 8 or higher installed and available on `PATH`
 

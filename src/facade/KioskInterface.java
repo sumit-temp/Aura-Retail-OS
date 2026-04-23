@@ -1,5 +1,10 @@
 package facade;
 
+/**
+ * Design Pattern: Facade
+ * Unified interface providing simplified kiosk operations.
+ */
+
 import factory.KioskFactory;
 import memento.InventoryManager;
 import command.PurchaseItemCommand;

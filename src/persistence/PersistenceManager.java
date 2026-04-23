@@ -3,6 +3,10 @@ package persistence;
 import java.io.*;
 import java.util.*;
 
+/**
+ * Utility class for file-based persistence.
+ * Handles saving/loading inventory, transactions, and configuration.
+ */
 public class PersistenceManager {
     private static final String DATA_DIR = "data";
     private static final String INVENTORY_FILE = "data/inventory.csv";

@@ -1,5 +1,10 @@
 package memento;
 
+/**
+ * Design Pattern: Memento (Originator)
+ * Manages inventory with thread-safe operations and memento support.
+ */
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;

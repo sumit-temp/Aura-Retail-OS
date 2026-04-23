@@ -1,3 +1,10 @@
+/**
+ * Aura Retail OS - Main Simulation
+ * 
+ * Demonstrates all 9 design patterns:
+ * Singleton, Abstract Factory, Command, Memento, State, Strategy,
+ * Chain of Responsibility, Observer, and Facade.
+ */
 import core.CentralRegistry;
 import core.EventBus;
 import core.events.EmergencyModeActivated;

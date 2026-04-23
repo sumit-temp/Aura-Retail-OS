@@ -1,23 +1,23 @@
 ```
-# Compiled Java files
+# Build artifacts
 *.class
-
-# Package manager directories
+build/
 target/
-.gradle/
 
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
+# Dependencies
+lib/
+libs/
 
-# Logs and temporary files
-*.log
+# Temp files
 *.tmp
+*.swp
 
-# Environment files
-.env
-.env.local
-*.env.*
+# Generated documentation
+docs/*.html
+docs/uml_png/
+uml/docs/uml_png/
+
+# UML artifacts
+*.utxt
+plantuml.jar
 ```

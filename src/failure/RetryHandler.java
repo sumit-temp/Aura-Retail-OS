@@ -1,5 +1,9 @@
 package failure;
 
+/**
+ * Design Pattern: Chain of Responsibility (Concrete Handler)
+ * First handler in chain - attempts automatic retries before escalating.
+ */
 public class RetryHandler extends FailureHandler {
     private int retryCount = 0;
     private final int MAX_RETRIES = 3;

@@ -7,6 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Design Pattern: Observer (Publish-Subscribe)
+ * Central event bus for decoupled communication between system components.
+ */
 public class EventBus {
     private static EventBus instance;
     private Map<String, List<EventListener>> listeners;

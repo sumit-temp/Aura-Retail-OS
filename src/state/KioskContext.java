@@ -1,5 +1,9 @@
 package state;
 
+/**
+ * Design Pattern: State (Context)
+ * Maintains the current kiosk state and delegates behavior to it.
+ */
 public class KioskContext {
     private KioskState currentState;
 

@@ -1,0 +1,138 @@
+@startuml Aura_Retail_OS_Subsystem_Architecture
+title Aura Retail OS - Subsystem Architecture Diagram
+
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+
+package "Client Layer" {
+    [Customer Application] as Customer
+    [Admin Dashboard] as Admin
+}
+
+package "Facade Layer" {
+    component "KioskInterface\n(Facade Pattern)" as Facade {
+        [purchaseItem()]
+        [refundTransaction()]
+        [runDiagnostics()]
+        [restockInventory()]
+    }
+}
+
+package "Core Services Subsystem" {
+    component "CentralRegistry\n(Singleton Pattern)" as Registry
+    component "EventBus\n(Observer Pattern)" as EventBus
+}
+
+package "Factory Subsystem" {
+    component "KioskFactory\n(Abstract Factory)" as Factory {
+        [PharmacyKioskFactory]
+        [FoodKioskFactory]
+        [EmergencyReliefKioskFactory]
+    }
+    database "Components" as Components {
+        [Dispenser]
+        [VerificationModule]
+        [InventoryPolicy]
+    }
+}
+
+package "Command Subsystem" {
+    component "Transaction Commands\n(Command Pattern)" as Commands {
+        [PurchaseItemCommand]
+        [RefundCommand]
+        [RestockCommand]
+    }
+}
+
+package "State Management Subsystem" {
+    component "Kiosk State\n(State Pattern)" as KioskState {
+        [ActiveMode]
+        [PowerSavingMode]
+        [MaintenanceMode]
+        [EmergencyLockdownMode]
+    }
+    component "Pricing Strategy\n(Strategy Pattern)" as Pricing {
+        [StandardPricing]
+        [DiscountedPricing]
+        [EmergencyPricing]
+    }
+    component "Inventory Memento\n(Memento Pattern)" as Memento {
+        [InventoryManager]
+        [InventoryState]
+    }
+}
+
+package "Failure Handling Subsystem" {
+    component "Chain of Responsibility" as CoR {
+        [RetryHandler]
+        [RecalibrationHandler]
+        [TechnicianAlertHandler]
+    }
+}
+
+package "Persistence Subsystem" {
+    database "File System" as FileSystem {
+        [inventory.json]
+        [transactions.csv]
+        [config.txt]
+    }
+    component "PersistenceManager" as Persistence
+}
+
+' External Systems
+rectangle "Hardware Layer" as Hardware {
+    [Dispensing Unit]
+    [Verification Scanner]
+    [Network Module]
+}
+
+rectangle "External Notifications" as External {
+    [SMS Gateway]
+    [Email Service]
+    [Monitoring Dashboard]
+}
+
+' Relationships
+Customer --> Facade : uses
+Admin --> Facade : manages
+
+Facade --> Registry : gets config
+Facade --> EventBus : publishes events
+Facade --> Commands : executes
+Facade --> KioskState : queries/changes state
+Facade --> Pricing : applies strategy
+Facade --> CoR : handles failures
+Facade --> Memento : saves/restores state
+
+Registry ..> Registry : <<singleton>>
+
+EventBus --> External : notifies
+EventBus --> CoR : publishes failures
+
+Factory --> Components : creates families
+Commands --> Memento : uses for rollback
+Commands --> Persistence : logs transactions
+
+KioskState --> Pricing : triggers strategy change
+Memento --> Persistence : persists snapshots
+
+CoR --> Hardware : attempts recalibration
+CoR --> External : alerts technician
+
+Persistence --> FileSystem : reads/writes
+
+' Legend
+legend right
+  |<b>Pattern Legend</b>|
+  | Singleton | CentralRegistry |
+  | Abstract Factory | KioskFactory |
+  | Command | TransactionCommand |
+  | Memento | InventoryManager |
+  | State | KioskState |
+  | Strategy | PricingStrategy |
+  | Chain of Responsibility | FailureHandler |
+  | Observer | EventBus |
+  | Facade | KioskInterface |
+endlegend
+
+@enduml

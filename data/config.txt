@@ -1,0 +1,5 @@
+# Aura Retail OS Configuration
+# Generated: Thu Apr 23 11:17:37 UTC 2026
+
+city = Zephyrus
+emergency_mode = false

@@ -1,3 +1,10 @@
+/**
+ * Aura Retail OS - Main Simulation
+ * 
+ * Demonstrates all 9 design patterns:
+ * Singleton, Abstract Factory, Command, Memento, State, Strategy,
+ * Chain of Responsibility, Observer, and Facade.
+ */
 import core.CentralRegistry;
 import core.EventBus;
 import core.events.EmergencyModeActivated;
@@ -83,13 +90,19 @@ public class Main {
 
         System.out.println("\n-> Hardware Failure Scenario (Transaction Rollback + Chain of Responsibility)");
         System.out.println("Current Stock before failure: " + pharmacyInventory.getStock("Amoxicillin"));
+        System.out.println("Available Stock before failure: " + pharmacyInventory.getAvailableStock("Amoxicillin"));
         pharmacyKiosk.simulateFailingPurchase("User456", "Amoxicillin", 5, 10.0);
         bus.publish(new HardwareFailureEvent("Pharmacy-Dispenser-Unit-1", "Motor stalled"));
         System.out.println("Final Stock after failed transaction: " + pharmacyInventory.getStock("Amoxicillin"));
+        System.out.println("Available Stock after failed transaction: " + pharmacyInventory.getAvailableStock("Amoxicillin"));
         persistence.recordTransaction("User456", "Amoxicillin", 5, 50.0, "FAILED_ROLLBACK");
         
         System.out.println("\n-> Diagnostics Check");
         pharmacyKiosk.runDiagnostics();
+        
+        // Save inventory to demonstrate persistence (fixing requirement 3.2 gap)
+        System.out.println("\n-> Saving inventory state to file...");
+        persistence.saveInventory(pharmacyInventory.getSnapshot());
 
         // ========== FOOD KIOSK TEST ==========
         System.out.println("\n\n========== FOOD KIOSK DEPLOYMENT ==========");

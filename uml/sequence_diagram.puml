@@ -1,0 +1,148 @@
+@startuml Aura_Retail_OS_Sequence_Diagram
+title Aura Retail OS - Purchase Item Sequence Diagram (with Emergency Mode Transition)
+
+participant "Customer" as Customer
+participant "KioskInterface\n(Facade)" as Facade
+participant "PricingContext\n(Strategy)" as PricingCtx
+participant "EmergencyPricing\n(Strategy)" as EmergencyPrice
+participant "StandardPricing\n(Strategy)" as StandardPrice
+participant "KioskContext\n(State)" as StateCtx
+participant "ActiveMode\n(State)" as Active
+participant "EmergencyLockdownMode\n(State)" as Emergency
+participant "InventoryManager\n(Memento)" as Inventory
+participant "PurchaseItemCommand\n(Command)" as Command
+participant "EventBus\n(Observer)" as EventBus
+participant "LowStockListener" as Listener
+participant "RetryHandler\n(CoR)" as RetryH
+participant "TechnicianAlertHandler\n(CoR)" as TechH
+
+== Normal Purchase Flow ==
+Customer -> Facade : purchaseItem(userId, productId, qty)
+activate Facade
+
+Facade -> StateCtx : getCurrentStateInfo()
+activate StateCtx
+StateCtx --> Facade : "ActiveMode"
+deactivate StateCtx
+
+Facade -> PricingCtx : executePricing(basePrice)
+activate PricingCtx
+PricingCtx -> StandardPrice : calculatePrice(basePrice, context)
+activate StandardPrice
+StandardPrice --> PricingCtx : finalPrice
+deactivate StandardPrice
+PricingCtx --> Facade : finalPrice
+deactivate PricingCtx
+
+Facade -> Inventory : saveState()
+activate Inventory
+Inventory --> Facade : InventoryState (memento)
+deactivate Inventory
+
+Facade -> Inventory : reduceStock(productId, qty)
+activate Inventory
+Inventory --> Facade : success
+deactivate Inventory
+
+Facade -> Command : log()
+activate Command
+Command --> Facade : logged
+deactivate Command
+
+Facade --> Customer : purchase successful
+deactivate Facade
+
+== Emergency Mode Activation ==
+note right: System detects emergency condition
+Facade -> StateCtx : setState(EmergencyLockdownMode)
+activate StateCtx
+StateCtx -> Emergency : activate(context)
+activate Emergency
+Emergency -> PricingCtx : setStrategy(EmergencyPricing)
+Emergency -> EventBus : publish(EmergencyModeActivated)
+activate EventBus
+EventBus -> Listener : onEvent(event)
+activate Listener
+Listener --> EventBus : handled
+deactivate Listener
+deactivate EventBus
+Emergency --> StateCtx : activated
+deactivate Emergency
+StateCtx --> Facade : state changed
+deactivate StateCtx
+
+== Purchase During Emergency ==
+Customer -> Facade : purchaseItem(userId, productId, qty)
+activate Facade
+
+Facade -> StateCtx : getCurrentStateInfo()
+activate StateCtx
+StateCtx --> Facade : "EmergencyLockdownMode"
+deactivate StateCtx
+
+Facade -> PricingCtx : executePricing(basePrice)
+activate PricingCtx
+PricingCtx -> EmergencyPrice : calculatePrice(basePrice, context)
+activate EmergencyPrice
+EmergencyPrice --> PricingCtx : discounted price
+deactivate EmergencyPrice
+PricingCtx --> Facade : finalPrice
+deactivate PricingCtx
+
+note right: Emergency rationing policy limits quantity
+Facade -> Inventory : reduceStock(productId, qty)
+activate Inventory
+alt Stock available & within limit
+    Inventory --> Facade : success
+    Facade -> Command : log()
+    Command --> Facade : logged
+    Facade --> Customer : purchase successful
+else Stock low
+    Inventory --> Facade : LowStockEvent triggered
+    Facade -> EventBus : publish(LowStockEvent)
+    activate EventBus
+    EventBus -> Listener : onEvent(event)
+    activate Listener
+    Listener --> EventBus : handled
+    deactivate Listener
+    deactivate EventBus
+    Facade --> Customer : limited quantity dispensed
+else Failure occurs
+    Inventory --> Facade : exception
+    Facade -> RetryH : handleFailure(exception)
+    activate RetryH
+    RetryH -> RetryH : retry attempt 1
+    RetryH -> RetryH : retry attempt 2
+    RetryH -> RetryH : retry attempt 3
+    note right: Max retries exceeded
+    RetryH -> TechH : escalate to technician
+    activate TechH
+    TechH --> TechH : alert technician
+    TechH --> RetryH : handled
+    deactivate TechH
+    RetryH --> Facade : could not recover
+    deactivate RetryH
+    
+    Facade -> Command : undo()
+    activate Command
+    Command -> Inventory : restoreState(memento)
+    activate Inventory
+    Inventory --> Command : restored
+    deactivate Inventory
+    Command --> Facade : rolled back
+    deactivate Command
+    
+    Facade -> EventBus : publish(HardwareFailureEvent)
+    activate EventBus
+    EventBus -> Listener : onEvent(event)
+    activate Listener
+    Listener --> EventBus : handled
+    deactivate Listener
+    deactivate EventBus
+    
+    Facade --> Customer : transaction failed, refunded
+end
+deactivate Inventory
+deactivate Facade
+
+@enduml

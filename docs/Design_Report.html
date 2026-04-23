@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Aura Retail OS - Design Report</title>
+<style>
+body{font-family:Arial,sans-serif;margin:40px;line-height:1.6;}
+table{border-collapse:collapse;width:100%;margin:20px 0;}
+th,td{border:1px solid #ddd;padding:12px;text-align:left;}
+th{background:#f2f2f2;font-weight:bold;}
+pre{background:#f5f5f5;padding:15px;overflow-x:auto;border-radius:4px;}
+code{background:#f5f5f5;padding:2px 6px;border-radius:3px;}
+h1,h2,h3{color:#333;}
+h1{border-bottom:2px solid #333;padding-bottom:10px;}
+</style></head><body><h1 id="aura-retail-os-system-design-report">Aura Retail OS - System Design Report</h1>
+<h2 id="1-problem-understanding">1. Problem Understanding</h2>
+<h3 id="11-project-overview">1.1 Project Overview</h3>
+<p>The Aura Retail OS is an adaptive autonomous retail kiosk management system designed to handle multiple kiosk types (Pharmacy, Food, Emergency Relief) with dynamic operational modes, pricing strategies, and failure handling capabilities. The system demonstrates advanced software engineering principles including OOP, design patterns, and concurrent transaction handling.</p>
+<h3 id="12-business-requirements">1.2 Business Requirements</h3>
+<ul>
+<li>Support multiple kiosk types with specialized components</li>
+<li>Handle dynamic pricing based on operational context (standard, discounted, emergency)</li>
+<li>Manage kiosk operational modes (Active, PowerSaving, Maintenance, EmergencyLockdown)</li>
+<li>Implement robust failure handling with retry, recalibration, and technician alert chain</li>
+<li>Ensure transaction atomicity with rollback capability</li>
+<li>Provide real-time event notification for system status changes</li>
+<li>Maintain inventory consistency under concurrent access</li>
+<li>Persist system state (inventory, transactions, configuration) to disk</li>
+</ul>
+<h3 id="13-technical-challenges-addressed">1.3 Technical Challenges Addressed</h3>
+<ul>
+<li><strong>Concurrency Control</strong>: Preventing inventory overselling during simultaneous transactions</li>
+<li><strong>State Management</strong>: Handling complex state transitions for kiosks and pricing</li>
+<li><strong>Failure Recovery</strong>: Graceful degradation through chain of responsibility pattern</li>
+<li><strong>Extensibility</strong>: Easy addition of new kiosk types and strategies through factory pattern</li>
+<li><strong>Data Integrity</strong>: Atomic transactions with memento-based rollback</li>
+</ul>
+<hr />
+<h2 id="2-subsystem-architecture">2. Subsystem Architecture</h2>
+<h3 id="21-core-subsystem">2.1 Core Subsystem</h3>
+<p><strong>Purpose</strong>: Central coordination and event management</p>
+<p><strong>Components</strong>:
+- <code>CentralRegistry</code>: Thread-safe Singleton providing global configuration and status
+- <code>EventBus</code>: Observer pattern implementation for pub-sub event distribution
+- <code>EventListener</code>: Interface for event subscribers
+- <code>SystemEvent</code> hierarchy: Base interface and concrete event classes</p>
+<p><strong>Responsibilities</strong>:
+- Global state management
+- Inter-component communication via events
+- System-wide configuration access</p>
+<h3 id="22-factory-subsystem">2.2 Factory Subsystem</h3>
+<p><strong>Purpose</strong>: Creation of kiosk-specific component families</p>
+<p><strong>Components</strong>:
+- <code>KioskFactory</code>: Abstract factory interface
+- <code>PharmacyKioskFactory</code>, <code>FoodKioskFactory</code>, <code>EmergencyReliefKioskFactory</code>: Concrete factories
+- <code>Dispenser</code>, <code>VerificationModule</code>, <code>InventoryPolicy</code>: Abstract product classes</p>
+<p><strong>Responsibilities</strong>:
+- Creating compatible component sets for each kiosk type
+- Ensuring component compatibility within families
+- Encapsulating object creation logic</p>
+<h3 id="23-command-subsystem">2.3 Command Subsystem</h3>
+<p><strong>Purpose</strong>: Transaction management with undo capability</p>
+<p><strong>Components</strong>:
+- <code>TransactionCommand</code>: Command interface
+- <code>PurchaseItemCommand</code>, <code>RefundCommand</code>, <code>RestockCommand</code>: Concrete commands
+- Integration with Memento for state management</p>
+<p><strong>Responsibilities</strong>:
+- Encapsulating transaction operations
+- Providing execute/undo functionality
+- Logging all transactions for audit trail</p>
+<h3 id="24-state-management-subsystem">2.4 State Management Subsystem</h3>
+<p><strong>Purpose</strong>: Dynamic kiosk mode and pricing strategy management</p>
+<p><strong>Components</strong>:
+- <strong>State Pattern</strong>: <code>KioskState</code>, <code>KioskContext</code>, concrete state classes
+- <strong>Strategy Pattern</strong>: <code>PricingStrategy</code>, <code>PricingContext</code>, concrete strategy classes
+- <strong>Memento Pattern</strong>: <code>InventoryManager</code>, <code>InventoryState</code></p>
+<p><strong>Responsibilities</strong>:
+- Managing kiosk operational mode transitions
+- Dynamic pricing strategy switching
+- State snapshotting for rollback</p>
+<h3 id="25-failure-handling-subsystem">2.5 Failure Handling Subsystem</h3>
+<p><strong>Purpose</strong>: Graceful error recovery</p>
+<p><strong>Components</strong>:
+- <code>FailureHandler</code>: Chain of Responsibility interface
+- <code>RetryHandler</code>, <code>RecalibrationHandler</code>, <code>TechnicianAlertHandler</code>: Concrete handlers</p>
+<p><strong>Responsibilities</strong>:
+- Attempting automatic recovery through retries
+- Escalating to hardware recalibration if retries fail
+- Alerting human technicians as final resort</p>
+<h3 id="26-facade-subsystem">2.6 Facade Subsystem</h3>
+<p><strong>Purpose</strong>: Simplified client interface</p>
+<p><strong>Components</strong>:
+- <code>KioskInterface</code>: Unified facade for all kiosk operations</p>
+<p><strong>Responsibilities</strong>:
+- Providing high-level operations: <code>purchaseItem()</code>, <code>refundTransaction()</code>, <code>runDiagnostics()</code>, <code>restockInventory()</code>
+- Coordinating interactions between subsystems
+- Hiding complexity from clients</p>
+<h3 id="27-persistence-subsystem">2.7 Persistence Subsystem</h3>
+<p><strong>Purpose</strong>: Data durability</p>
+<p><strong>Components</strong>:
+- <code>PersistenceManager</code>: File I/O operations</p>
+<p><strong>Responsibilities</strong>:
+- Saving/loading inventory state
+- Recording transactions to CSV
+- Managing configuration persistence</p>
+<hr />
+<h2 id="3-design-pattern-justification">3. Design Pattern Justification</h2>
+<h3 id="31-singleton-centralregistry">3.1 Singleton (CentralRegistry)</h3>
+<p><strong>Why Used</strong>: Ensures exactly one instance of global configuration registry accessible throughout the application.</p>
+<p><strong>Benefits</strong>:
+- Controlled access to shared resources
+- Lazy initialization with thread safety
+- Single point of truth for system configuration</p>
+<p><strong>Implementation</strong>: Double-checked locking with <code>ReentrantLock</code> for thread safety.</p>
+<h3 id="32-abstract-factory-kioskfactory-hierarchy">3.2 Abstract Factory (KioskFactory hierarchy)</h3>
+<p><strong>Why Used</strong>: Creates families of related objects (Dispenser, VerificationModule, InventoryPolicy) without specifying concrete classes.</p>
+<p><strong>Benefits</strong>:
+- Ensures component compatibility within kiosk types
+- Easy to add new kiosk types by creating new factory
+- Encapsulates creation logic</p>
+<p><strong>Example</strong>: PharmacyKioskFactory creates pharmacy-specific dispenser with prescription verification, while FoodKioskFactory creates refrigerated dispenser.</p>
+<h3 id="33-command-transactioncommand-hierarchy">3.3 Command (TransactionCommand hierarchy)</h3>
+<p><strong>Why Used</strong>: Encapsulates requests as objects, enabling parameterization, queuing, and undo operations.</p>
+<p><strong>Benefits</strong>:
+- Supports transaction logging and audit trails
+- Enables undo/rollback functionality
+- Decouples invoker from receiver</p>
+<p><strong>Integration</strong>: Works with Memento pattern for state restoration on undo.</p>
+<h3 id="34-memento-inventorymanager-inventorystate">3.4 Memento (InventoryManager + InventoryState)</h3>
+<p><strong>Why Used</strong>: Captures and externalizes object's internal state without violating encapsulation.</p>
+<p><strong>Benefits</strong>:
+- Enables transaction rollback on failure
+- Preserves encapsulation of InventoryManager
+- Supports atomic transaction semantics</p>
+<p><strong>Usage</strong>: Before dispensing, state is saved; on failure, state is restored.</p>
+<h3 id="35-state-kioskstate-hierarchy">3.5 State (KioskState hierarchy)</h3>
+<p><strong>Why Used</strong>: Allows object to alter behavior when internal state changes.</p>
+<p><strong>Benefits</strong>:
+- Eliminates complex conditional logic for mode handling
+- Easy to add new operational modes
+- Each state encapsulates its own behavior</p>
+<p><strong>States</strong>: ActiveMode, PowerSavingMode, MaintenanceMode, EmergencyLockdownMode</p>
+<h3 id="36-strategy-pricingstrategy-hierarchy">3.6 Strategy (PricingStrategy hierarchy)</h3>
+<p><strong>Why Used</strong>: Defines family of algorithms (pricing), encapsulates each, and makes them interchangeable.</p>
+<p><strong>Benefits</strong>:
+- Runtime switching of pricing algorithms
+- Open/closed principle: easy to add new strategies
+- Separates pricing logic from kiosk operations</p>
+<p><strong>Strategies</strong>: StandardPricing, DiscountedPricing, EmergencyPricing</p>
+<h3 id="37-chain-of-responsibility-failurehandler-hierarchy">3.7 Chain of Responsibility (FailureHandler hierarchy)</h3>
+<p><strong>Why Used</strong>: Passes requests along chain of handlers until one handles it.</p>
+<p><strong>Benefits</strong>:
+- Decouples sender from receivers
+- Dynamic chain composition
+- Graceful degradation through escalation</p>
+<p><strong>Chain</strong>: RetryHandler → RecalibrationHandler → TechnicianAlertHandler</p>
+<h3 id="38-observer-eventbus-eventlistener">3.8 Observer (EventBus + EventListener)</h3>
+<p><strong>Why Used</strong>: Defines one-to-many dependency so when one object changes state, all dependents are notified.</p>
+<p><strong>Benefits</strong>:
+- Loose coupling between event producers and consumers
+- Dynamic subscription/unsubscription
+- Supports broadcast communication</p>
+<p><strong>Events</strong>: LowStockEvent, HardwareFailureEvent, EmergencyModeActivated</p>
+<h3 id="39-facade-kioskinterface">3.9 Facade (KioskInterface)</h3>
+<p><strong>Why Used</strong>: Provides unified interface to a set of interfaces in a subsystem.</p>
+<p><strong>Benefits</strong>:
+- Simplifies client interaction with complex system
+- Reduces dependencies on subsystem classes
+- Single entry point for kiosk operations</p>
+<hr />
+<h2 id="4-major-class-explanations">4. Major Class Explanations</h2>
+<h3 id="41-centralregistry">4.1 CentralRegistry</h3>
+<pre><code class="language-java">public class CentralRegistry {
+    private static volatile CentralRegistry instance;
+    private ReentrantLock lock = new ReentrantLock();
+    private Map&lt;String, Object&gt; config;
+}
+</code></pre>
+<p><strong>Purpose</strong>: Global configuration store using thread-safe Singleton pattern.
+<strong>Key Methods</strong>: <code>getInstance()</code>, <code>getConfig()</code>, <code>setConfig()</code>
+<strong>Thread Safety</strong>: Double-checked locking prevents race conditions during lazy initialization.</p>
+<h3 id="42-kioskinterface">4.2 KioskInterface</h3>
+<pre><code class="language-java">public class KioskInterface {
+    private InventoryManager inventoryManager;
+    private PricingContext pricingContext;
+    private KioskContext stateContext;
+    private FailureHandler failureChain;
+}
+</code></pre>
+<p><strong>Purpose</strong>: Facade providing simplified API for kiosk operations.
+<strong>Key Methods</strong>: 
+- <code>purchaseItem()</code>: Coordinates pricing, inventory, dispensing with error handling
+- <code>refundTransaction()</code>: Reverses completed transactions
+- <code>runDiagnostics()</code>: Reports system health derived from actual conditions
+- <code>restockInventory()</code>: Adds stock with persistence</p>
+<h3 id="43-purchaseitemcommand">4.3 PurchaseItemCommand</h3>
+<pre><code class="language-java">public class PurchaseItemCommand implements TransactionCommand {
+    private InventoryManager inventoryManager;
+    private InventoryState savedState; // Memento
+}
+</code></pre>
+<p><strong>Purpose</strong>: Encapsulates purchase operation with rollback support.
+<strong>Key Methods</strong>: 
+- <code>execute()</code>: Performs purchase, saves state before modification
+- <code>undo()</code>: Restores state from memento on failure
+<strong>Pattern Integration</strong>: Combines Command pattern with Memento for atomic transactions.</p>
+<h3 id="44-eventbus">4.4 EventBus</h3>
+<pre><code class="language-java">public class EventBus {
+    private Map&lt;String, List&lt;EventListener&gt;&gt; listeners;
+    private ReentrantLock lock = new ReentrantLock();
+}
+</code></pre>
+<p><strong>Purpose</strong>: Central event distribution hub implementing Observer pattern.
+<strong>Key Methods</strong>: 
+- <code>subscribe(eventType, listener)</code>: Register listener for event type
+- <code>publish(event)</code>: Notify all listeners of event
+<strong>Thread Safety</strong>: Copy-on-read pattern prevents ConcurrentModificationException.</p>
+<h3 id="45-kioskcontext">4.5 KioskContext</h3>
+<pre><code class="language-java">public class KioskContext {
+    private KioskState currentState;
+}
+</code></pre>
+<p><strong>Purpose</strong>: Context class for State pattern managing kiosk operational modes.
+<strong>Key Methods</strong>: 
+- <code>setState(KioskState)</code>: Transition to new state
+- <code>getCurrentStateInfo()</code>: Get current state description
+<strong>Behavior Delegation</strong>: All state-dependent behavior delegated to current state object.</p>
+<h3 id="46-pricingcontext">4.6 PricingContext</h3>
+<pre><code class="language-java">public class PricingContext {
+    private PricingStrategy strategy;
+}
+</code></pre>
+<p><strong>Purpose</strong>: Context class for Strategy pattern managing pricing algorithms.
+<strong>Key Methods</strong>: 
+- <code>setStrategy(PricingStrategy)</code>: Switch pricing algorithm at runtime
+- <code>executePricing(basePrice)</code>: Apply current strategy to calculate final price</p>
+<h3 id="47-retryhandler">4.7 RetryHandler</h3>
+<pre><code class="language-java">public class RetryHandler implements FailureHandler {
+    private FailureHandler nextHandler;
+    private int maxRetries = 3;
+}
+</code></pre>
+<p><strong>Purpose</strong>: First link in Chain of Responsibility attempting automatic retry.
+<strong>Key Methods</strong>: 
+- <code>handleFailure(error)</code>: Attempt retry or pass to next handler
+<strong>Escalation Logic</strong>: After max retries exceeded, passes to RecalibrationHandler.</p>
+<h3 id="48-inventorymanager">4.8 InventoryManager</h3>
+<pre><code class="language-java">public class InventoryManager {
+    private Map&lt;String, Integer&gt; stock;
+    private ReentrantLock lock = new ReentrantLock();
+}
+</code></pre>
+<p><strong>Purpose</strong>: Manages inventory with concurrency control and memento support.
+<strong>Key Methods</strong>: 
+- <code>getStock(productId)</code>: Thread-safe stock retrieval
+- <code>reduceStock(productId, amount)</code>: Atomic stock reduction
+- <code>saveState()</code>: Create memento for rollback
+- <code>restoreState(memento)</code>: Restore from memento</p>
+<hr />
+<h2 id="5-team-member-contributions">5. Team Member Contributions</h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Responsibilities</th>
+<th>Components Implemented</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Team Member 1</td>
+<td>Core Architecture, Singleton, Event System</td>
+<td>CentralRegistry, EventBus, Event hierarchy</td>
+</tr>
+<tr>
+<td>Team Member 2</td>
+<td>Factory Pattern, Component Design</td>
+<td>KioskFactory hierarchy, Dispenser, VerificationModule, InventoryPolicy</td>
+</tr>
+<tr>
+<td>Team Member 3</td>
+<td>Command Pattern, Transaction Management</td>
+<td>TransactionCommand hierarchy, PurchaseItemCommand with Memento</td>
+</tr>
+<tr>
+<td>Team Member 4</td>
+<td>State &amp; Strategy Patterns</td>
+<td>KioskState hierarchy, PricingStrategy hierarchy</td>
+</tr>
+<tr>
+<td>Team Member 5</td>
+<td>Failure Handling, Chain of Responsibility</td>
+<td>FailureHandler hierarchy, RetryHandler, RecalibrationHandler, TechnicianAlertHandler</td>
+</tr>
+<tr>
+<td>Team Member 6</td>
+<td>Facade, Persistence, Integration</td>
+<td>KioskInterface, PersistenceManager, Main.java simulation</td>
+</tr>
+<tr>
+<td>All Members</td>
+<td>Testing, Documentation, UML Diagrams</td>
+<td>Simulation scenarios, README, Design Report</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6-execution-instructions">6. Execution Instructions</h2>
+<h3 id="61-prerequisites">6.1 Prerequisites</h3>
+<ul>
+<li>Java 11 or higher</li>
+<li>No external dependencies required</li>
+</ul>
+<h3 id="62-compilation">6.2 Compilation</h3>
+<pre><code class="language-bash">cd src
+javac Main.java
+</code></pre>
+<h3 id="63-running-the-simulation">6.3 Running the Simulation</h3>
+<pre><code class="language-bash">java Main
+</code></pre>
+<h3 id="64-expected-output">6.4 Expected Output</h3>
+<p>The simulation demonstrates:
+1. Kiosk creation using Abstract Factory
+2. Normal purchase flow with Standard Pricing
+3. Mode transition to Emergency Lockdown
+4. Emergency Pricing activation
+5. Concurrent transaction handling
+6. Failure scenario with Chain of Responsibility
+7. Event notification system
+8. Transaction rollback via Memento
+9. Persistence to CSV files</p>
+<hr />
+<h2 id="7-conclusion">7. Conclusion</h2>
+<p>The Aura Retail OS successfully demonstrates mastery of object-oriented design principles and design patterns. The system architecture promotes:</p>
+<ul>
+<li><strong>Maintainability</strong>: Clear separation of concerns through well-defined subsystems</li>
+<li><strong>Extensibility</strong>: Easy addition of new kiosk types, states, strategies via existing patterns</li>
+<li><strong>Robustness</strong>: Comprehensive error handling with graceful degradation</li>
+<li><strong>Scalability</strong>: Thread-safe implementations supporting concurrent operations</li>
+<li><strong>Testability</strong>: Modular design enabling unit testing of individual components</li>
+</ul>
+<p>All nine design patterns (Singleton, Abstract Factory, Command, Memento, State, Strategy, Chain of Responsibility, Observer, Facade) are meaningfully integrated to solve specific architectural challenges rather than being applied artificially.</p>
+<hr />
+<p><em>Document Version: 1.0</em>
+<em>Course: IT620 - Software Architecture &amp; Design</em>
+<em>Project: Aura Retail OS</em></p></body></html>

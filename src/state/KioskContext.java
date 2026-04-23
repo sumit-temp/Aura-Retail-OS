@@ -28,4 +28,12 @@ public class KioskContext {
     public String getCurrentStateInfo() {
         return currentState.getClass().getSimpleName();
     }
+    
+    /**
+     * Returns true if the current state allows purchases.
+     * Only ActiveMode permits normal purchase operations.
+     */
+    public boolean canPurchase() {
+        return currentState instanceof ActiveMode;
+    }
 }

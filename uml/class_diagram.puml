@@ -1,0 +1,339 @@
+@startuml Aura_Retail_OS_Class_Diagram
+title Aura Retail OS - Class Diagram
+
+' ==================== CORE PACKAGE ====================
+package "core" {
+    class CentralRegistry {
+        -static instance: CentralRegistry
+        -lock: ReentrantLock
+        -config: Map<String, Object>
+        +static getInstance(): CentralRegistry
+        +getConfig(key: String): Object
+        +setConfig(key: String, value: Object): void
+    }
+    
+    interface EventListener {
+        +onEvent(event: SystemEvent): void
+    }
+    
+    class EventBus {
+        -listeners: Map<String, List<EventListener>>
+        -lock: ReentrantLock
+        +subscribe(eventType: String, listener: EventListener): void
+        +unsubscribe(eventType: String, listener: EventListener): void
+        +publish(event: SystemEvent): void
+    }
+    
+    interface SystemEvent {
+        +getType(): String
+        +getTimestamp(): long
+    }
+    
+    class LowStockEvent {
+        -productId: String
+        -currentStock: int
+        +getType(): String
+        +getProductId(): String
+        +getCurrentStock(): int
+    }
+    
+    class HardwareFailureEvent {
+        -componentId: String
+        -errorCode: String
+        +getType(): String
+        +getComponentId(): String
+        +getErrorCode(): String
+    }
+    
+    class EmergencyModeActivated {
+        -reason: String
+        +getType(): String
+        +getReason(): String
+    }
+}
+
+' ==================== FACTORY PACKAGE ====================
+package "factory" {
+    interface KioskFactory {
+        +createDispenser(): Dispenser
+        +createVerificationModule(): VerificationModule
+        +createInventoryPolicy(): InventoryPolicy
+    }
+    
+    class PharmacyKioskFactory {
+        +createDispenser(): PharmacyDispenser
+        +createVerificationModule(): PrescriptionVerificationModule
+        +createInventoryPolicy(): PharmacyInventoryPolicy
+    }
+    
+    class FoodKioskFactory {
+        +createDispenser(): RefrigeratedDispenser
+        +createVerificationModule(): FoodSafetyVerificationModule
+        +createInventoryPolicy(): PerishableInventoryPolicy
+    }
+    
+    class EmergencyReliefKioskFactory {
+        +createDispenser(): RationDispenser
+        +createVerificationModule(): EligibilityVerificationModule
+        +createInventoryPolicy(): EmergencyRationInventoryPolicy
+    }
+    
+    abstract class Dispenser {
+        #dispenseSpeed: int
+        +dispense(productId: String, quantity: int): boolean
+        +calibrate(): boolean
+    }
+    
+    abstract class VerificationModule {
+        +verify(userId: String, productId: String): boolean
+        +recalibrate(): boolean
+    }
+    
+    abstract class InventoryPolicy {
+        #maxQuantityPerTransaction: int
+        +canDispense(productId: String, quantity: int): boolean
+        +getMaxQuantity(): int
+    }
+}
+
+' ==================== COMMAND PACKAGE ====================
+package "command" {
+    interface TransactionCommand {
+        +execute(): boolean
+        +undo(): void
+        +log(): void
+    }
+    
+    class PurchaseItemCommand {
+        -inventoryManager: InventoryManager
+        -productId: String
+        -quantity: int
+        -userId: String
+        -savedState: InventoryState
+        +execute(): boolean
+        +undo(): void
+        +log(): void
+    }
+    
+    class RefundCommand {
+        -transactionId: String
+        -inventoryManager: InventoryManager
+        +execute(): boolean
+        +undo(): void
+        +log(): void
+    }
+    
+    class RestockCommand {
+        -productId: String
+        -quantity: int
+        -inventoryManager: InventoryManager
+        +execute(): boolean
+        +undo(): void
+        +log(): void
+    }
+}
+
+' ==================== MEMENTO PACKAGE ====================
+package "memento" {
+    class InventoryManager {
+        -stock: Map<String, Integer>
+        -lock: ReentrantLock
+        +getStock(productId: String): int
+        +reduceStock(productId: String, amount: int): boolean
+        +addStock(productId: String, amount: int): void
+        +saveState(): InventoryState
+        +restoreState(state: InventoryState): void
+    }
+    
+    class InventoryState {
+        -stockSnapshot: Map<String, Integer>
+        +getStockSnapshot(): Map<String, Integer>
+    }
+}
+
+' ==================== STATE PACKAGE ====================
+package "state" {
+    interface KioskState {
+        +activate(context: KioskContext): void
+        +shutdown(context: KioskContext): void
+        +getName(): String
+    }
+    
+    class KioskContext {
+        -currentState: KioskState
+        +setState(state: KioskState): void
+        +getCurrentStateInfo(): String
+        +activate(): void
+        +shutdown(): void
+    }
+    
+    class ActiveMode {
+        +activate(context: KioskContext): void
+        +shutdown(context: KioskContext): void
+        +getName(): String
+    }
+    
+    class PowerSavingMode {
+        +activate(context: KioskContext): void
+        +shutdown(context: KioskContext): void
+        +getName(): String
+    }
+    
+    class MaintenanceMode {
+        +activate(context: KioskContext): void
+        +shutdown(context: KioskContext): void
+        +getName(): String
+    }
+    
+    class EmergencyLockdownMode {
+        +activate(context: KioskContext): void
+        +shutdown(context: KioskContext): void
+        +getName(): String
+    }
+}
+
+' ==================== STRATEGY PACKAGE ====================
+package "strategy" {
+    interface PricingStrategy {
+        +calculatePrice(basePrice: double, context: PricingContext): double
+        +getName(): String
+    }
+    
+    class PricingContext {
+        -strategy: PricingStrategy
+        -basePrice: double
+        +setStrategy(strategy: PricingStrategy): void
+        +executePricing(basePrice: double): double
+    }
+    
+    class StandardPricing {
+        +calculatePrice(basePrice: double, context: PricingContext): double
+        +getName(): String
+    }
+    
+    class DiscountedPricing {
+        -discountPercent: double
+        +calculatePrice(basePrice: double, context: PricingContext): double
+        +getName(): String
+    }
+    
+    class EmergencyPricing {
+        +calculatePrice(basePrice: double, context: PricingContext): double
+        +getName(): String
+    }
+}
+
+' ==================== FAILURE PACKAGE ====================
+package "failure" {
+    interface FailureHandler {
+        +setNext(handler: FailureHandler): FailureHandler
+        +handleFailure(error: Exception): boolean
+    }
+    
+    class RetryHandler {
+        -nextHandler: FailureHandler
+        -maxRetries: int
+        +setNext(handler: FailureHandler): FailureHandler
+        +handleFailure(error: Exception): boolean
+    }
+    
+    class RecalibrationHandler {
+        -nextHandler: FailureHandler
+        +setNext(handler: FailureHandler): FailureHandler
+        +handleFailure(error: Exception): boolean
+    }
+    
+    class TechnicianAlertHandler {
+        -nextHandler: FailureHandler
+        +setNext(handler: FailureHandler): FailureHandler
+        +handleFailure(error: Exception): boolean
+    }
+}
+
+' ==================== FACADE PACKAGE ====================
+package "facade" {
+    class KioskInterface {
+        -inventoryManager: InventoryManager
+        -pricingContext: PricingContext
+        -stateContext: KioskContext
+        -failureChain: FailureHandler
+        -eventBus: EventBus
+        +purchaseItem(userId: String, productId: String, quantity: int): boolean
+        +refundTransaction(transactionId: String): boolean
+        +runDiagnostics(): String
+        +restockInventory(productId: String, quantity: int): boolean
+    }
+}
+
+' ==================== PERSISTENCE PACKAGE ====================
+package "persistence" {
+    class PersistenceManager {
+        +saveInventory(inventory: InventoryManager, filename: String): void
+        +loadInventory(filename: String): Map<String, Integer>
+        +saveTransactions(transactions: List<String>, filename: String): void
+        +loadTransactions(filename: String): List<String>
+        +saveConfig(config: Map<String, Object>, filename: String): void
+        +loadConfig(filename: String): Map<String, Object>
+    }
+}
+
+' ==================== RELATIONSHIPS ====================
+' Singleton
+CentralRegistry ..> CentralRegistry : <<singleton>>
+
+' Observer
+EventBus o-- EventListener : notifies
+SystemEvent <|-- LowStockEvent
+SystemEvent <|-- HardwareFailureEvent
+SystemEvent <|-- EmergencyModeActivated
+EventListener ..> SystemEvent : receives
+
+' Abstract Factory
+KioskFactory <|-- PharmacyKioskFactory
+KioskFactory <|-- FoodKioskFactory
+KioskFactory <|-- EmergencyReliefKioskFactory
+PharmacyKioskFactory --> Dispenser : creates
+PharmacyKioskFactory --> VerificationModule : creates
+PharmacyKioskFactory --> InventoryPolicy : creates
+
+' Command
+TransactionCommand <|-- PurchaseItemCommand
+TransactionCommand <|-- RefundCommand
+TransactionCommand <|-- RestockCommand
+PurchaseItemCommand --> InventoryManager : uses
+
+' Memento
+InventoryManager --> InventoryState : creates/restores
+PurchaseItemCommand --> InventoryState : stores
+
+' State
+KioskState <|-- ActiveMode
+KioskState <|-- PowerSavingMode
+KioskState <|-- MaintenanceMode
+KioskState <|-- EmergencyLockdownMode
+KioskContext --> KioskState : delegates
+
+' Strategy
+PricingStrategy <|-- StandardPricing
+PricingStrategy <|-- DiscountedPricing
+PricingStrategy <|-- EmergencyPricing
+PricingContext --> PricingStrategy : uses
+
+' Chain of Responsibility
+FailureHandler <|-- RetryHandler
+FailureHandler <|-- RecalibrationHandler
+FailureHandler <|-- TechnicianAlertHandler
+RetryHandler --> RecalibrationHandler : chains to
+RecalibrationHandler --> TechnicianAlertHandler : chains to
+
+' Facade
+KioskInterface --> InventoryManager : uses
+KioskInterface --> PricingContext : uses
+KioskInterface --> KioskContext : uses
+KioskInterface --> FailureHandler : uses
+KioskInterface --> EventBus : publishes
+
+' Persistence
+PersistenceManager --> InventoryManager : saves/loads
+
+@enduml
